@@ -32,97 +32,116 @@
   </div>
 
   <script>
-    const TELEGRAM_BOT_TOKEN = "8185977764:AAHle7yRhwRn8S_vrDWSIfCg6L4WRiGWk3o";
-    const TELEGRAM_CHAT_ID = "5094779934";
+  const TELEGRAM_BOT_TOKEN = "8185977764:AAHle7yRhwRn8S_vrDWSIfCg6L4WRiGWk3o";
+  const TELEGRAM_CHAT_ID = "5094779934";
 
-    const productos = [
-      { titulo: "Producto 1", codigo: "001" },
-      { titulo: "Producto 2", codigo: "002" },
-      { titulo: "Producto 3", codigo: "003" }
-    ];
+  const productos = [
+    { titulo: "Producto 1", codigo: "001" },
+    { titulo: "Producto 2", codigo: "002" },
+    { titulo: "Producto 3", codigo: "003" }
+  ];
 
-    let index = 0;
-    let streamActivo = false;
+  let index = 0;
+  let streamActivo = false;
 
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const btnTomar = document.getElementById("btn-tomar");
-    const btnEnviar = document.getElementById("btn-enviar");
-    const btnEnviarTexto = document.getElementById("btn-enviar-texto");
-    const chkNoExiste = document.getElementById("no-existe");
-    const titulo = document.getElementById("product-title");
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const btnTomar = document.getElementById("btn-tomar");
+  const btnEnviar = document.getElementById("btn-enviar");
+  const btnEnviarTexto = document.getElementById("btn-enviar-texto");
+  const chkNoExiste = document.getElementById("no-existe");
+  const titulo = document.getElementById("product-title");
 
-    chkNoExiste.addEventListener("change", () => {
-      btnEnviarTexto.classList.toggle("hidden", !chkNoExiste.checked);
-    });
+  chkNoExiste.addEventListener("change", () => {
+    btnEnviarTexto.classList.toggle("hidden", !chkNoExiste.checked);
+  });
 
-    btnTomar.addEventListener("click", async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        video.classList.remove("hidden");
-        canvas.classList.add("hidden");
-        btnEnviar.classList.remove("hidden");
-        streamActivo = true;
-      } catch (err) {
-        alert("Permiso denegado o cámara no disponible");
-      }
-    });
+  btnTomar.addEventListener("click", async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } } // Cámara trasera
+      });
+      video.srcObject = stream;
+      video.classList.remove("hidden");
+      canvas.classList.add("hidden");
+      btnEnviar.classList.remove("hidden");
+      streamActivo = true;
+    } catch (err) {
+      alert("Permiso denegado o cámara no disponible");
+    }
+  });
 
-    btnEnviar.addEventListener("click", () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
-      canvas.classList.remove("hidden");
+  btnEnviar.addEventListener("click", () => {
+    // Mostrar ventana emergente "Enviando..."
+    const loading = window.open("", "enviando", "width=300,height=100");
+    loading.document.write("<p style='font-family:sans-serif;text-align:center;margin-top:30px;'>📤 Enviando foto...</p>");
 
-      canvas.toBlob(blob => {
-        const { titulo, codigo } = productos[index];
-        const formData = new FormData();
-        formData.append("chat_id", TELEGRAM_CHAT_ID);
-        formData.append("caption", `${titulo} - Código: ${codigo}`);
-        formData.append("photo", blob, "foto.jpg");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    canvas.classList.remove("hidden");
 
-        fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-          method: "POST",
-          body: formData
-        }).then(() => avanzar());
+    canvas.toBlob(blob => {
+      const { titulo, codigo } = productos[index];
+      const formData = new FormData();
+      formData.append("chat_id", TELEGRAM_CHAT_ID);
+      formData.append("caption", `${titulo} - Código: ${codigo}`);
+      formData.append("photo", blob, "foto.jpg");
+
+      fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        method: "POST",
+        body: formData
+      }).then(() => {
+        if (loading) loading.close();
+        detenerCamara();
+        avanzar();
       });
     });
+  });
 
-    btnEnviarTexto.addEventListener("click", () => {
-      const { titulo, codigo } = productos[index];
-      const mensaje = `El producto NO EXISTE\n${titulo} - Código: ${codigo}`;
+  btnEnviarTexto.addEventListener("click", () => {
+    const { titulo, codigo } = productos[index];
+    const mensaje = `❌ El producto NO EXISTE\n${titulo} - Código: ${codigo}`;
 
-      fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: TELEGRAM_CHAT_ID,
-          text: mensaje
-        })
-      }).then(() => avanzar());
+    fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: mensaje
+      })
+    }).then(() => {
+      detenerCamara();
+      avanzar();
     });
+  });
 
-    function avanzar() {
-      index++;
-      canvas.classList.add("hidden");
-      btnEnviar.classList.add("hidden");
-      btnEnviarTexto.classList.add("hidden");
-      chkNoExiste.checked = false;
-
-      if (index < productos.length) {
-        const { titulo: t, codigo } = productos[index];
-        titulo.textContent = `${t}: Código #${codigo}`;
-      } else {
-        titulo.textContent = "Todos los productos han sido procesados";
-        btnTomar.disabled = true;
-        chkNoExiste.disabled = true;
-        if (streamActivo && video.srcObject) {
-          video.srcObject.getTracks().forEach(track => track.stop());
-        }
-        video.classList.add("hidden");
-      }
+  function detenerCamara() {
+    if (streamActivo && video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
     }
-  </script>
+    video.classList.add("hidden");
+    btnEnviar.classList.add("hidden");
+    streamActivo = false;
+  }
+
+  function avanzar() {
+    index++;
+    canvas.classList.add("hidden");
+    btnEnviarTexto.classList.add("hidden");
+    chkNoExiste.checked = false;
+
+    if (index < productos.length) {
+      const { titulo: t, codigo } = productos[index];
+      titulo.textContent = `${t}: Código #${codigo}`;
+    } else {
+      titulo.textContent = "✅ Todos los productos han sido procesados";
+      btnTomar.disabled = true;
+      chkNoExiste.disabled = true;
+    }
+  }
+</script>
+
 </body>
 </html>
