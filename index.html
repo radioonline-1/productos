@@ -19,6 +19,10 @@
     <div class="flex flex-col sm:flex-row gap-2 justify-center">
       <button id="btn-tomar" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Activar Cámara</button>
       <button id="btn-enviar" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded hidden">Tomar y Enviar</button>
+      <div class="flex justify-center">
+  <button id="btn-reiniciar" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Reiniciar</button>
+</div>
+
     </div>
 
     <label class="flex items-center gap-2">
@@ -107,7 +111,8 @@
   { titulo: "YVES SAINT LAURENT Y 100ML EDP+ 75G DEO", codigo: "417884" }
 ];
 
-  let index = 0;
+  let index = parseInt(localStorage.getItem("productoIndex")) || 0;
+
   let streamActivo = false;
 
   const video = document.getElementById("video");
@@ -164,7 +169,14 @@
       });
     });
   });
+const btnReiniciar = document.getElementById("btn-reiniciar");
 
+btnReiniciar.addEventListener("click", () => {
+  if (confirm("¿Estás seguro de que quieres reiniciar la lista?")) {
+    localStorage.removeItem("productoIndex");
+    location.reload(); // Refresca para aplicar el cambio
+  }
+});
   btnEnviarTexto.addEventListener("click", () => {
     const { titulo, codigo } = productos[index];
     const mensaje = `❌ El producto NO EXISTE\n${titulo} - Código: ${codigo}`;
@@ -194,6 +206,7 @@
 
   function avanzar() {
     index++;
+    localStorage.setItem("productoIndex", index);
     canvas.classList.add("hidden");
     btnEnviarTexto.classList.add("hidden");
     chkNoExiste.checked = false;
