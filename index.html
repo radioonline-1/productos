@@ -296,6 +296,16 @@ btnReiniciar.addEventListener("click", () => {
       chkNoExiste.disabled = true;
     }
   }
+    // Mostrar producto actual al cargar la página
+if (index < productos.length) {
+  const { titulo: t, codigo } = productos[index];
+  titulo.textContent = `${t}: Código #${codigo}`;
+} else {
+  titulo.textContent = "✅ Todos los productos han sido procesados";
+  btnTomar.disabled = true;
+  chkNoExiste.disabled = true;
+}
+
 </script>
 
 </body>
